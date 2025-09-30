@@ -283,7 +283,28 @@ def test_given_negative_start_or_endpoint_then_we_fail(start, end):
         match="Invalid input, result start and end must be positive",
     ):
         create_recognizer_result("entity", 0, start, end)
+@pytest.mark.parametrize(
+    "self_start, self_end, other_start, other_end, expected",
+    [
+        (0, 5, 10, 15, 0),    # no overlap (self before other)
+        (10, 15, 0, 5, 0),    # no overlap (other before self)
+        (5, 15, 5, 15, 10),   # exact/full overlap
+        (5, 15, 10, 20, 5),   # partial (self overlaps start of other)
+        (10, 20, 5, 15, 5),   # partial (other overlaps start of self)
+        (10, 15, 5, 20, 5),   # containment (self inside other)
+        (5, 20, 10, 15, 5),   # containment (other inside self)
+        (0, 5, 5, 10, 0),     # exact-touch boundary (end == start)
+        (5, 10, 0, 5, 0),     # exact-touch boundary (reverse)
+    ],
+)
+def test_intersects(self_start, self_end, other_start, other_end, expected):
+    # the helper you showed expects (entity_type, score, start, end)
+    self_result = create_recognizer_result("ENTITY", 0.9, self_start, self_end)
+    other_result = create_recognizer_result("ENTITY", 0.9, other_start, other_end)
 
+    # check both directions (should be symmetric) — helps cover branches
+    assert self_result.intersects(other_result) == expected
+    assert other_result.intersects(self_result) == expected
 
 def create_recognizer_result(entity_type: str, score: float, start: int, end: int):
     data = {"entity_type": entity_type, "score": score, "start": start, "end": end}
